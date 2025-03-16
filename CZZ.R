@@ -104,9 +104,6 @@ print(r2_values)
 AIC(model_TE, model_temp, model_TO, model_avg_temp, model_max_temp,
     model_min_temp, model_temp_range, model_combined)
 
-
-# Print the ranked AIC values
-print(aic_df)
 # 画残差图
 par(mfrow=c(2,4))
 plot(model_TE, which = 1, main = "Residuals: TE Model")
@@ -130,8 +127,35 @@ par(mfrow=c(1,1))
 # How well does your model fit the historic data?
 # 进一步更新模型
 
+colnames(demand_modelling)
+shapiro.test(demand_modelling$demand_gross)
+shapiro.test(log(demand_modelling$demand_gross))
+
+qqnorm(demand_modelling$demand_gross)
+qqline(demand_modelling$demand_gross, col = "red")
+# log版正态分布check
+qqnorm(log(demand_modelling$demand_gross))
+qqline(log(demand_modelling$demand_gross), col = "red")
 
 
+lm_model <- lm(demand_gross ~ avg_temp + temp_range + wind * solar_S * monthindex,
+               data = demand_modelling)
+summary(lm_model)
+
+lm_model_ploy <- lm(demand_gross ~ poly(avg_temp, 2) + poly(temp_range, 2) + 
+                  wind + solar_S + poly(monthindex, 2) + wdayindex + poly(DSN, 2), data = demand_modelling)
+summary(lm_model_ploy)
+
+lm_model_interact <- lm(demand_gross ~ poly(avg_temp, 2) + poly(temp_range, 2) + 
+                          solar_S * monthindex + poly(DSN, 2), 
+                        data = demand_modelling)
+summary(lm_model_interact)
+
+
+lm_model_optimized <- lm(demand_gross ~ poly(avg_temp, 2) + poly(temp_range, 2) + 
+                           solar_S + poly(monthindex, 2) + poly(DSN, 2), 
+                         data = demand_modelling)
+summary(lm_model_optimized)
 
 
 
