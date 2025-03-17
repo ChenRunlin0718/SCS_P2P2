@@ -20,22 +20,11 @@ hourly_temp <- hourly_temp %>%
   )
 # ---- EDA ----
 # 需求数据的分布
-ggplot(demand_modelling, aes(x = `demand_gross`)) +
-  geom_histogram(bins = 80, fill = "blue", alpha = 0.5) +
-  labs(title = "Peak Daily Demand Distribution",
-       x = "Demand gross (MW)", y = "Frequency")+
-  theme_bw()
-
 # 需求量 vs 温度变量
 ggplot(demand_modelling, aes(x = TE, y = demand_gross)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm", color = "red") +
   labs(title = "Demand vs TE", x = "TE", y = "Demand gross (MW)")
-
-ggplot(demand_modelling, aes(x = temp, y = demand_gross)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", color = "red") +
-  labs(title = "Demand vs temp", x = "temp", y = "Demand gross (MW)")
 
 
 # ---- Q1 ----
@@ -106,17 +95,9 @@ print(r2_values)
 AIC(model_TE, model_temp, model_TO, model_avg_temp, model_max_temp,
     model_min_temp, model_temp_range, model_combined)
 
-# 画残差图
-par(mfrow=c(2,4))
-plot(model_TE, which = 1, main = "Residuals: TE Model")
-plot(model_temp, which = 1, main = "Residuals: temp Model")
-plot(model_TO, which = 1, main = "Residuals: TO Model")
-plot(model_avg_temp, which = 1, main = "Residuals: avg_temp Model")
-plot(model_max_temp, which = 1, main = "Residuals: model_max_temp")
-plot(model_min_temp, which = 1, main = "Residuals: model_min_temp")
-plot(model_temp_range, which = 1, main = "Residuals: model_temp_range")
-plot(model_combined, which = 1, main = "Residuals: Combined Model")
-par(mfrow=c(1,1))
+
+
+
 
 #'“我们的分析表明，NESO 目前使用的 TE 变量（R² = 0.0772，AIC = 69021.50）
 #'是单变量中最好的选择。然而，使用组合变量 avg_temp + temp_range 
