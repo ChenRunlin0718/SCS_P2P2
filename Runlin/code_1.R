@@ -94,6 +94,22 @@ legend("topright", legend = c("Original slope","95% CI"),
 
 
 
+### Find the best model (unfinished)
+model_1 = lm(demand_gross ~ TE,
+             data = demand_df)
+model_2 = lm(demand_gross ~ TE + wind,
+             data = demand_df)
+model_3 = lm(demand_gross ~ TE + wind + wdayindex,
+             data = demand_df)
+
+AIC(model_1, model_2, model_3)
+summary(model_1)$adj.r.squared
+summary(model_2)$adj.r.squared
+summary(model_3)$adj.r.squared
+
+
+
+
 
 # Task 2
 # How well does the model fit the historic data?
