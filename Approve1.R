@@ -123,41 +123,18 @@ par(mfrow=c(1,1))
 #'可以进一步提高预测能力（R² = 0.0811，AIC = 69008.78）。
 #'因此，我们建议 NESO 在未来的预测模型中，
 #'采用 avg_temp + temp_range 作为新的预测变量，以提高峰值电力需求的估计精度。”
+#'
 
 
 # ---- Q2 ----
-# How well does your model fit the historic data?
-# 进一步更新模型
-
-colnames(demand_modelling)
-shapiro.test(demand_modelling$demand_gross)
-shapiro.test(log(demand_modelling$demand_gross))
-
-qqnorm(demand_modelling$demand_gross)
-qqline(demand_modelling$demand_gross, col = "red")
-# log版正态分布check
-qqnorm(log(demand_modelling$demand_gross))
-qqline(log(demand_modelling$demand_gross), col = "red")
 
 
-lm_model <- lm(demand_gross ~ avg_temp + temp_range + wind * solar_S * monthindex,
-               data = demand_modelling)
-summary(lm_model)
-
-lm_model_ploy <- lm(demand_gross ~ poly(avg_temp, 2) + poly(temp_range, 2) + 
-                  wind + solar_S + poly(monthindex, 2) + wdayindex + poly(DSN, 2), data = demand_modelling)
-summary(lm_model_ploy)
-
-lm_model_interact <- lm(demand_gross ~ poly(avg_temp, 2) + poly(temp_range, 2) + 
-                          solar_S * monthindex + poly(DSN, 2), 
-                        data = demand_modelling)
-summary(lm_model_interact)
 
 
-lm_model_optimized <- lm(demand_gross ~ poly(avg_temp, 2) + poly(temp_range, 2) + 
-                           solar_S + poly(monthindex, 2) + poly(DSN, 2), 
-                         data = demand_modelling)
-summary(lm_model_optimized)
 
+# ---- Q3 ----
+
+
+# ---- Q4 ----
 
 
