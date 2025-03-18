@@ -38,6 +38,7 @@ ggplot(demand_modelling, aes(x = temp, y = demand_gross)) +
   labs(title = "Demand vs temp", x = "temp", y = "Demand gross (MW)")
 
 
+
 # ---- Q1 ----
 # How does peak daily demand depend on temperature?
 # 把小时的温度转换
@@ -52,7 +53,9 @@ temp_summary <- hourly_temp %>%
     temp_range = max_temp - min_temp,     # 温度变化幅度
     last_3h_avg = mean(tail(temp, 3)),    # 过去3小时平均温度
     last_6h_avg = mean(tail(temp, 6)),    # 过去6小时平均温度
-    last_12h_avg = mean(tail(temp, 12))   # 过去12小时平均温度
+    last_12h_avg = mean(tail(temp, 12)),   # 过去12小时平均温度
+    last_18h_avg = mean(tail(temp, 18)),   # 过去18小时平均温度
+    avg_temp_4pm_11pm = mean(temp[Hour >= 18 & Hour <= 23], na.rm = TRUE)
   )
 
 # 将新特征合并到主数据集
@@ -60,7 +63,7 @@ demand_modelling <- inner_join(demand_modelling, temp_summary, by = "Date")
 
 cor_data <- demand_modelling  %>%
   select(demand_gross, TE, temp, TO, avg_temp, max_temp, min_temp, temp_range,
-         last_3h_avg, last_6h_avg, last_12h_avg)
+         last_3h_avg, last_6h_avg, last_12h_avg, last_18h_avg, avg_temp_4pm_11pm)
 colSums(is.na(cor_data))
 cor_matrix <- cor(cor_data, use = "complete.obs")
 
@@ -158,6 +161,45 @@ lm_model_optimized <- lm(demand_gross ~ poly(avg_temp, 2) + poly(temp_range, 2) 
                            solar_S + poly(monthindex, 2) + poly(DSN, 2), 
                          data = demand_modelling)
 summary(lm_model_optimized)
+
+glm_model <- glm(demand_gross ~ avg_temp + temp_range + wind + solar_S + monthindex + wdayindex + DSN, 
+                 data = demand_modelling, family = Gamma(link = "log"))
+summary(glm_model)
+
+ggplot(demand_modelling, aes(x = Date, y = demand_gross)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Demand over year", x = "Year", y = "Demand gross (MW)")
+
+ggplot(demand_modelling, aes(x = Date, y = demand_gross, color = factor(monthindex))) +
+  geom_point(alpha = 0.5) +  
+  geom_smooth(method = "lm", color = "red") +  
+  scale_color_viridis_d(option = "cividis") +  # 颜色梯度
+  labs(title = "Demand Change Over Year", x = "Year", y = "Demand Change", color = "Month") +
+  theme_minimal()
+
+
+ggplot(demand_modelling, aes(x = Date, y = TE)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "TE change over year", x = "Year", y = "Temp Change")
+
+library(viridis)  # 可选：用于更好的颜色梯度
+
+ggplot(demand_modelling, aes(x = Date, y = TE, color = factor(monthindex))) +
+  geom_point(alpha = 0.5) +  
+  geom_smooth(method = "lm", color = "red") +  
+  scale_color_viridis_d(option = "plasma") +  # 颜色梯度
+  labs(title = "TE Change Over Year", x = "Year", y = "Temp Change", color = "Month") +
+  theme_minimal()
+
+ggplot(demand_modelling, aes(x = monthindex, y = demand_gross, color = factor(monthindex))) +
+  geom_point(alpha = 0.5) +  
+  geom_smooth(method = "lm", color = "red") +  
+  #scale_color_viridis_d(option = "plasma") +  # 颜色梯度
+  labs(title = "Demand Change Over TE", x = "TE", y = "Demand", color = "Month") +
+  theme_minimal()
+
 
 
 
