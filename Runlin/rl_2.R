@@ -14,6 +14,20 @@ library(readr)
 library(corrplot)
 library(lubridate)
 
+
+
+
+
+sefdsfdssddsf
+d
+fds
+fds
+fds
+fds
+
+
+
+
 # 1) Define a function that checks if a row is in the "Christmas week"
 is_christmas_week <- function(d) {
   # Convert each date to a "month-day" format, e.g. "12-24"
@@ -178,3 +192,136 @@ par(mfrow=c(2,2))
 plot(step_model)
 par(mfrow=c(2,2))
 plot(full_model_1)
+
+
+
+
+
+
+### Q3
+
+final_model <- lm(
+  demand_gross ~ start_year + start_year:TE +
+    wdayindex + solar_S + wind
+  + DSN + I(DSN^2),
+  data = demand_df
+)
+
+
+#########################################
+# (2) Subset the 2013–14 winter data
+#########################################
+winter_1314 <- subset(demand_df, start_year == 2013)
+
+# The actual max demand in 2013–14:
+actual_max_1314 <- max(winter_1314$demand_gross, na.rm = TRUE)
+
+# Also predict baseline 2013–14 demand with its own actual weather,
+# for reference, so we have a "model-based" 2013–14 max
+predicted_1314 <- predict(final_model, newdata = winter_1314)
+model_based_max_1314 <- max(predicted_1314, na.rm = TRUE)
+
+cat("Actual 2013–14 max demand:", actual_max_1314, "\n")
+cat("Model-based 2013–14 max demand:", model_based_max_1314, "\n")
+
+#########################################
+# (3) Helper: substitute weather, get predicted max
+#########################################
+compute_max_demand_for_historic_weather <- function(model,
+                                                    baseline_1314,
+                                                    hist_winter) {
+  # 1. Copy the 2013–14 dataset
+  scenario_df <- baseline_1314
+  
+  # 2. Merge the older winter’s weather columns into 2013–14 rows
+  #    by DSN so day i lines up with day i
+  scenario_df <- merge(
+    scenario_df[ , !(names(scenario_df) %in% c("temp", "wind"))],
+    hist_winter[ , c("DSN", "temp", "wind")],
+    by = "DSN",
+    all.x = TRUE
+  )
+  
+  # 3. Predict demand using the final model
+  pred <- predict(model, newdata = scenario_df)
+  
+  # 4. Return the max predicted demand
+  max(pred, na.rm = TRUE)
+}
+
+#########################################
+# (4) Loop over each older winter
+#########################################
+unique_winters <- sort(unique(demand_df$start_year))
+results <- data.frame(
+  winter_start          = integer(),
+  max_pred_demand       = numeric(),
+  diff_from_actual_1314 = numeric(), # compare to actual 2013–14
+  diff_from_model_1314  = numeric()  # compare to predicted 2013–14
+)
+
+for(yr in unique_winters) {
+  if(yr == 2013) next  # skip or not, up to you
+  
+  hist_winter_df <- subset(demand_df, start_year == yr)
+  
+  # Make sure lengths match or handle partial merges. 
+  # Then compute the scenario's max
+  scenario_max <- compute_max_demand_for_historic_weather(
+    model          = final_model,
+    baseline_1314  = winter_1314,
+    hist_winter    = hist_winter_df
+  )
+  
+  # Compare to the *actual* 2013–14 max
+  delta_actual <- scenario_max - actual_max_1314
+  
+  # Compare to the *model-based* 2013–14 max
+  delta_model  <- scenario_max - model_based_max_1314
+  
+  results <- rbind(results, data.frame(
+    winter_start          = yr,
+    max_pred_demand       = scenario_max,
+    diff_from_actual_1314 = delta_actual,
+    diff_from_model_1314  = delta_model
+  ))
+}
+
+#########################################
+# (5) Look at results
+#########################################
+print(results)
+
+# Make sure results$winter_start is sorted in ascending order
+results <- results[order(results$winter_start), ]
+
+plot(
+  x    = results$winter_start,
+  y    = results$max_pred_demand,
+  type = "o",           # 'o' means draw both lines and points
+  pch  = 16,            # plotting symbol
+  lty  = 1,             # solid line
+  lwd  = 2,             # line thickness
+  xlab = "Historic Winter (start year)",
+  ylab = "Max Demand (MW)",
+  main = "Counterfactual 2013–14 Max Demand vs. Actual & Model Baseline"
+)
+# Add a horizontal line for the *actual* 2013–14 maximum
+abline(h = actual_max_1314, col = "red", lwd = 2, lty = 2)
+# Add a horizontal line for the *model-based* 2013–14 maximum
+abline(h = model_based_max_1314, col = "blue", lwd = 2, lty = 3)
+# Legend
+legend("topright",
+       legend = c("Counterfactual/New Max", "Actual 2013–14", "Model Baseline 2013–14"),
+       col    = c("black", "red", "blue"),
+       lty    = c(1, 2, 3),
+       pch    = c(16, NA, NA),
+       lwd    = 2)
+
+### Note that the x-axes is the year which data is replace into the model 
+### Each point are all predicted 2013-2014, but got replaced by different year in the model
+
+
+
+
+
