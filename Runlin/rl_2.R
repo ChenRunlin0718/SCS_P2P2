@@ -15,19 +15,11 @@ library(corrplot)
 library(lubridate)
 
 
+demand_df <- read.csv("SCS_demand_modelling.csv", 
+                      stringsAsFactors = FALSE)
 
 
-
-sefdsfdssddsf
-d
-fds
-fds
-fds
-fds
-
-
-
-
+demand_df$Date <- as.Date(demand_df$Date, format = "%Y-%m-%d")
 # 1) Define a function that checks if a row is in the "Christmas week"
 is_christmas_week <- function(d) {
   # Convert each date to a "month-day" format, e.g. "12-24"
@@ -36,9 +28,10 @@ is_christmas_week <- function(d) {
   (md >= "12-23" & md <= "12-27")
 }
 
-
 # 2) Subset to KEEP rows that are NOT in that range
 demand_df_cleaned <- subset(demand_df, !is_christmas_week(Date))
+
+
 demand_df_cleaned <- subset(demand_df, format(Date, "%m-%d") != "01-01")
 # 3) Check results
 nrow(demand_df_cleaned)  # how many rows remain
