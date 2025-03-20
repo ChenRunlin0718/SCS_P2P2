@@ -41,6 +41,10 @@ summary(model_TE)$adj.r.squared
 # Method 2: Bootstrap method
 
 
+
+
+
+
 original_model <- lm(demand_gross ~ temp, data = demand_df)
 
 # 1) Set up bootstrap parameters
@@ -113,9 +117,10 @@ summary(model_3)$adj.r.squared
 
 # Task 2
 # How well does the model fit the historic data?
-final_model <- lm(demand_gross ~ temp + wind + wdayindex,
+final_model <- lm(demand_gross ~ temp + wind + poly(DSN,2) + solar_S,
                   data = demand_df)
 
+summary(final_model)
 ## Method 1: Check the assumptions
 # 这里假设最好的model 是TE，因为他AIC最低和R^2最高
 par(mfrow=c(2,2))
@@ -231,6 +236,7 @@ plot(
   main = "Counterfactual 2013–14 Max Demand vs. Actual & Model Baseline"
 )
 
+
 # Add a horizontal line for the *actual* 2013–14 maximum
 abline(h = actual_max_1314, col = "red", lwd = 2, lty = 2)
 
@@ -239,7 +245,7 @@ abline(h = model_based_max_1314, col = "blue", lwd = 2, lty = 3)
 
 # Legend
 legend("topright",
-       legend = c("Counterfactual Max", "Actual 2013–14", "Model Baseline 2013–14"),
+       legend = c("Counterfactual/New Max", "Actual 2013–14", "Model Baseline 2013–14"),
        col    = c("black", "red", "blue"),
        lty    = c(1, 2, 3),
        pch    = c(16, NA, NA),

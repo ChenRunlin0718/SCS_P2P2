@@ -68,7 +68,6 @@ model_combined <- lm(demand_gross ~ avg_temp + temp_range, data = demand_modelli
 
 
 
-
 # 计算所有模型的 R²
 r2_values <- data.frame(
   Model = c("TE", "temp", "TO", "avg_temp", "max_temp", "min_temp", "temp_range", "avg_temp + temp_range"),
@@ -94,8 +93,6 @@ print(r2_values)
 # 计算 AIC（用于模型比较）
 AIC(model_TE, model_temp, model_TO, model_avg_temp, model_max_temp,
     model_min_temp, model_temp_range, model_combined)
-
-
 
 
 
