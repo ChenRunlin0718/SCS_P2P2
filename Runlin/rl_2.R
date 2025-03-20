@@ -7,11 +7,33 @@
 #   DSN             (days since 1 November)
 # Make sure 'start_year' and 'DOW' are set as factors.
 
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(corrplot)
+library(lubridate)
+
+# 1) Define a function that checks if a row is in the "Christmas week"
+is_christmas_week <- function(d) {
+  # Convert each date to a "month-day" format, e.g. "12-24"
+  md <- format(d, "%m-%d")
+  # Return TRUE if between 12-24 and 12-26
+  (md >= "12-23" & md <= "12-27")
+}
 
 
-demand_df <- read.csv("SCS_demand_modelling.csv", 
-                      stringsAsFactors = FALSE)
+# 2) Subset to KEEP rows that are NOT in that range
+demand_df_cleaned <- subset(demand_df, !is_christmas_week(Date))
+demand_df_cleaned <- subset(demand_df, format(Date, "%m-%d") != "01-01")
+# 3) Check results
+nrow(demand_df_cleaned)  # how many rows remain
 
+
+
+
+#demand_df <- read.csv("SCS_demand_modelling.csv", stringsAsFactors = FALSE)
+demand_df <- demand_df_cleaned 
 
 ############################################
 # 1) Prepare the dataset
@@ -55,3 +77,104 @@ model_2 <- lm(
 )
 
 summary(model_2)
+
+
+
+########################################
+# 1) Convert your Date column to Date class
+########################################
+# (Assuming your dataset is demand_df and 
+#  Date is in "YYYY-MM-DD" format.)
+demand_df$Date <- as.Date(demand_df$Date, format = "%Y-%m-%d")
+
+########################################
+# 2) Create a subset for 2014–15
+#    Typically, 'start_year == 2014' 
+#    covers 1 Nov 2014 to 31 Mar 2015
+########################################
+df_1314 <- subset(demand_df, start_year == 2013)
+
+########################################
+# 3) Plot side-by-side or stacked
+#    We'll do stacked: (2 rows, 1 column)
+########################################
+par(mfrow = c(2,1), mar = c(4,4,3,1))
+
+# 3a) Top plot: All years
+plot(demand_df$Date, demand_df$demand_gross,
+     type = "l", col = "blue",
+     main = "All years",
+     xlab = "Time",
+     ylab = "Peak demand (MW)")
+
+plot(demand_df_cleaned$Date, demand_df_cleaned$demand_gross,
+     type = "l", col = "blue",
+     main = "All years without Chrismas",
+     xlab = "Time",
+     ylab = "Peak demand (MW)")
+
+# 3b) Bottom plot: 2014–15 only
+plot(df_1415$Date, df_1314$demand_gross,
+     type = "l", col = "blue",
+     main = "2013/14",
+     xlab = "Time",
+     ylab = "Peak demand (MW)")
+
+
+full_model_1 <- lm(
+  demand_gross ~ start_year + start_year:TE +
+    wdayindex + solar_S + wind
+    + DSN + I(DSN^2),
+  data = demand_df
+)
+
+summary(full_model_1)
+
+
+
+full_model_2 <- lm(
+  demand_gross ~ start_year + start_year:TE + TE + I(TE^2)+
+    wdayindex + solar_S + wind + DSN + I(DSN^2) +poly(wdayindex,2),
+  data = demand_df
+)
+summary(full_model_2)
+acf(full_model_1$residuals, main="Autocorrelation")
+
+
+
+# 假设你的数据框是 demand_df，里面有 demand_gross, TE 等变量
+full_model_3 <- lm(
+  demand_gross ~ start_year + wdayindex + wind + solar_S +
+    DSN + I(DSN^2) + TE + I(TE^2), 
+  data = demand_df
+)
+
+summary(full_model_3)
+
+
+summary(full_model_2)
+
+
+step_model <- step(full_model)
+summary(step_model)
+AIC(full_model_1)
+AIC(full_model_2)
+
+
+acf(full_model_2$residuals, main="Autocorrelation")
+
+backup_full <- lm(
+  demand_gross ~ start_year*TE + wdayindex + start_year*wind*solar_S +
+    DSN + I(DSN^2) + TE + I(TE^2) + TE*wind*solar_S,  
+  data = demand_df
+)
+
+step_model <- step(full_model)
+summary(step_model)
+AIC(step_model)
+AIC(full_model_1)
+
+par(mfrow=c(2,2))
+plot(step_model)
+par(mfrow=c(2,2))
+plot(full_model_1)
