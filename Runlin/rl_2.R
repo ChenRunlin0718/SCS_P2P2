@@ -30,7 +30,7 @@ is_christmas_week <- function(d) {
 
 # 2) Subset to KEEP rows that are NOT in that range
 demand_df_cleaned <- subset(demand_df, !is_christmas_week(Date))
-
+demand_df <- demand_df_cleaned 
 
 demand_df_cleaned <- subset(demand_df, format(Date, "%m-%d") != "01-01")
 # 3) Check results
@@ -92,7 +92,7 @@ summary(model_2)
 ########################################
 # (Assuming your dataset is demand_df and 
 #  Date is in "YYYY-MM-DD" format.)
-demand_df$Date <- as.Date(demand_df$Date, format = "%Y-%m-%d")
+#demand_df$Date <- as.Date(demand_df$Date, format = "%Y-%m-%d")
 
 ########################################
 # 2) Create a subset for 2014–15
@@ -174,8 +174,7 @@ backup_full <- lm(
   data = demand_df
 )
 
-step_model <- step(full_model)
-summary(step_model)
+
 AIC(step_model)
 AIC(full_model_1)
 
