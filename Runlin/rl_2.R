@@ -121,7 +121,7 @@ plot(demand_df_cleaned$Date, demand_df_cleaned$demand_gross,
      ylab = "Peak demand (MW)")
 
 # 3b) Bottom plot: 2014–15 only
-plot(df_1415$Date, df_1314$demand_gross,
+plot(df_1314$Date, df_1314$demand_gross,
      type = "l", col = "blue",
      main = "2013/14",
      xlab = "Time",
@@ -162,8 +162,6 @@ summary(full_model_3)
 summary(full_model_2)
 
 
-step_model <- step(full_model)
-summary(step_model)
 AIC(full_model_1)
 AIC(full_model_2)
 
