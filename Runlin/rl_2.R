@@ -175,7 +175,6 @@ backup_full <- lm(
 )
 
 
-AIC(step_model)
 AIC(full_model_1)
 
 par(mfrow=c(2,2))
