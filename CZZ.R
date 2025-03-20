@@ -200,6 +200,23 @@ ggplot(demand_modelling, aes(x = monthindex, y = demand_gross, color = factor(mo
   labs(title = "Demand Change Over TE", x = "TE", y = "Demand", color = "Month") +
   theme_minimal()
 
+# 星期平均图
+demand_modelling %>%
+  group_by(wdayindex) %>%
+  summarise(mean_demand = mean(demand_gross, na.rm = TRUE)) %>%
+  mutate(wdayindex= factor(wdayindex, levels = c(0, 1, 2, 3, 4, 5, 6), 
+                          labels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))) %>%
+  ggplot(aes(x = wdayindex, y = mean_demand, group = 1)) +
+  geom_line(color = "red", size = 1.5, alpha = 0.5) +
+  geom_point(color = "black", size = 2) + # 添加点以增强可视化
+  labs(title = "Monthly Trend of Peak Demand", x = "Week (Winter)", y = "Average Peak Demand (MW)") +
+  theme_light()
+
+# 假期
+
+
+
+
 
 
 
