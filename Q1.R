@@ -48,6 +48,12 @@ demand_modelling <- inner_join(demand_modelling, temp_summary, by = "Date")
 demand_modelling <- demand_modelling %>%
   mutate(wdayindex = as.numeric(as.character(wdayindex)))
 # ----Data Cleaning----
+# Lag first
+demand_modelling <- demand_modelling %>%
+  arrange(Date) %>%
+  mutate(lag1_demand = lag(demand_gross, 1))
+
+
 # keep 95% quantile of peak daily demand over a year
 demand_modelling_filtered <- demand_modelling %>%
   group_by(year) %>%
@@ -132,7 +138,7 @@ model_performance <- data.frame(
 # Sort by R² to find the best models
 model_performance <- model_performance[order(-model_performance$Adj_R2), ]
 
-kable(model_performance, col.names = c("Model", "Adjusted R²", "AIC", "MSE"),
+kable(model_performance, format = 'latex', col.names = c("Model", "Adjusted R²", "AIC", "MSE"),
       caption = "Comparison of Single-Variable Regression Models for Peak Demand")
 
 

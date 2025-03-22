@@ -20,17 +20,17 @@ plot(c(1:3221), model_TE$residuals, type="l", xlab="Time", ylab="Residuals")
 #'   (although not lowest variance as Gauss-Markov won’t hold).
 #'   But the standard errors will be wrong...
 
-library(lmtest)
-# Check whether there is autocorrelation
-dwtest(model_TE) # Durbin-Watson Test
+
 
 acf(model_TE$residuals, main="Autocorrelation")
 
 
 # ---- Lag Model----
-demand_df <- demand_df %>%
-  arrange(Date) %>%
-  mutate(lag1_demand = lag(demand_gross, 1))
+
+#demand_df <- demand_df %>%
+#  arrange(Date) %>%
+#  mutate(lag1_demand = lag(demand_gross, 1))
+
 
 model_with_lag <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
                        solar_S + wind + DSN + I(DSN^2), data = demand_df)
@@ -38,10 +38,11 @@ summary(model_with_lag)
 AIC(model_with_lag)
 par(mfrow=c(1,1))
 acf(model_with_lag$residuals, main="Autocorrelation")
-dwtest(model_with_lag) 
 par(mfrow=c(2,2))
 plot(model_with_lag)
 
+par(mfrow=c(1,1))
+plot(c(1:3220), model_with_lag$residuals, type="l", xlab="Time", ylab="Residuals")
 
 # ----Boostrapping----
 # ----Adj_r_square----
