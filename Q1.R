@@ -48,9 +48,18 @@ demand_modelling <- inner_join(demand_modelling, temp_summary, by = "Date")
 demand_modelling <- demand_modelling %>%
   mutate(wdayindex = as.numeric(as.character(wdayindex)))
 # ----Data Cleaning----
+# keep 95% quantile of peak daily demand over a year
+demand_modelling_filtered <- demand_modelling %>%
+  group_by(year) %>%
+  arrange(desc(demand_gross), .by_group = TRUE) %>%
+  mutate(row_num = row_number(),
+         total_rows = n(),
+         keep = row_num <= 0.95 * total_rows) %>%
+  filter(keep) %>%
+  select(-row_num, -total_rows, -keep)
 
 # Filter out the "Christmas week" and "New Year"
-demand_df <- demand_modelling %>%
+demand_df <- demand_modelling_filtered  %>%
   filter(!(format(Date, "%m-%d") %in% c("01-01", "12-23", "12-24", "12-25", "12-26", "12-27")))
 
 
@@ -120,10 +129,7 @@ kable(model_performance, col.names = c("Model", "Adjusted R²", "AIC"),
       caption = "Comparison of Single-Variable Regression Models for Peak Demand")
 
 
-model_combine <- lm(demand_gross ~ start_year + avg_temp:temp_range + temp_range+ start_year:TE + wdayindex + solar_S + wind + DSN + I(DSN^2), data = demand_df)
 
-summary(model_combine)
-AIC(model_combine)
 
 
 
