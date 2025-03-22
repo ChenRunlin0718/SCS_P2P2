@@ -24,7 +24,6 @@ library(lmtest)
 # Check whether there is autocorrelation
 dwtest(model_TE) # Durbin-Watson Test
 
-
 acf(model_TE$residuals, main="Autocorrelation")
 
 
