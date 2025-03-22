@@ -120,14 +120,20 @@ model_performance <- data.frame(
           AIC(model_avg_temp), AIC(model_max_temp), AIC(model_min_temp),
           AIC(model_temp_range), AIC(model_3h_avg), AIC(model_6h_avg),
           AIC(model_12h_avg), AIC(model_18h_avg), 
-          AIC(model_day_temp), AIC(model_night_temp), AIC(model_combine))
+          AIC(model_day_temp), AIC(model_night_temp), AIC(model_combine)),
+  
+  MSE = c(summary(model_TE)$sigma^2, summary(model_temp)$sigma^2, summary(model_TO)$sigma^2,
+          summary(model_avg_temp)$sigma^2, summary(model_max_temp)$sigma^2, summary(model_min_temp)$sigma^2,
+          summary(model_temp_range)$sigma^2, summary(model_3h_avg)$sigma^2, summary(model_6h_avg)$sigma^2,
+          summary(model_12h_avg)$sigma^2, summary(model_18h_avg)$sigma^2, 
+          summary(model_day_temp)$sigma^2, summary(model_night_temp)$sigma^2,
+          summary(model_combine)$sigma^2)
 )
 # Sort by R² to find the best models
 model_performance <- model_performance[order(-model_performance$Adj_R2), ]
 
-kable(model_performance, col.names = c("Model", "Adjusted R²", "AIC"),
+kable(model_performance, col.names = c("Model", "Adjusted R²", "AIC", "MSE"),
       caption = "Comparison of Single-Variable Regression Models for Peak Demand")
-
 
 
 

@@ -36,7 +36,7 @@ model_with_lag <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + w
                        solar_S + wind + DSN + I(DSN^2), data = demand_df)
 summary(model_with_lag)
 AIC(model_with_lag)
-
+par(mfrow=c(1,1))
 acf(model_with_lag$residuals, main="Autocorrelation")
 dwtest(model_with_lag) 
 par(mfrow=c(2,2))
@@ -55,51 +55,51 @@ boot_fn <- function(data, indices) {
   d <- data[indices, ]
   model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE +
                 wdayindex + solar_S + wind + DSN + I(DSN^2), data = d)
-  return(summary(model)$r.square)
+  return(summary(model)$adj.r.squared)
 }
 
 # Step 3: 执行 bootstrapping
 set.seed(123)
 boot_results <- boot(data = demand_df, statistic = boot_fn, R = 1000)
 
-# Step 4: 查看置信区间
-# 创建空 data frame 存结果
-param_names <- names(coef(lm(demand_gross ~ lag1_demand + start_year + start_year:TE +
-                               wdayindex + solar_S + wind + DSN + I(DSN^2), data = demand_df)))
-
-ci_table <- data.frame(Parameter = param_names,
-                       Estimate = NA,
-                       CI_Lower = NA,
-                       CI_Upper = NA)
-
-# 填充表格
-for (i in 1:length(param_names)) {
-  ci <- boot.ci(boot_results, type = "perc", index = i)
-  ci_table$Estimate[i] <- boot_results$t0[i]
-  ci_table$CI_Lower[i] <- ci$percent[4]  # 4th value = 2.5% percentile
-  ci_table$CI_Upper[i] <- ci$percent[5]  # 5th value = 97.5% percentile
-}
-
-
-
-
-
-
-
-# function to obtain R-Squared from the data
-rsq <- function(formula, data, indices)
-{
-  d <- data[indices,] # allows boot to select sample
-  fit <- lm(formula, data=d)
-  return(summary(fit)$r.square)
-}
-# bootstrapping with 1000 replications
-results <- boot(data=mtcars, statistic=rsq,
-                R=1000, formula=mpg~wt+disp)
-
 # view results
-results
-plot(results)
+boot_results 
+plot(boot_results)
 
 # get 95% confidence interval
-boot.ci(results, type="bca")
+boot.ci(boot_results, type = "perc")
+
+
+boot_fn <- function(data, indices) {
+  d <- data[indices, ]
+  model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE +
+                wdayindex + solar_S + wind + DSN + I(DSN^2), data = d)
+  return(coef(model))
+}
+# Step 3: 执行 bootstrapping
+set.seed(123)
+boot_results <- boot(data = demand_df, statistic = boot_fn, R = 1000)
+boot.ci(boot_results, type = "perc", index = i)
+plot(boot_results, index = 2) 
+
+# 创建一个 data frame 存放结果
+ci_table <- data.frame(
+  Coefficient = names(coef(model_with_lag)),
+  Estimate = as.numeric(coef(model_with_lag)),
+  Lower_95 = NA,
+  Upper_95 = NA
+)
+
+# 填入 bootstrap CI
+for (i in 1:nrow(ci_table)) {
+  ci <- boot.ci(boot_results, type = "perc", index = i)
+  if (!is.null(ci$percent)) {
+    ci_table$Lower_95[i] <- ci$percent[4]
+    ci_table$Upper_95[i] <- ci$percent[5]
+  }
+}
+ci_table$Significant <- ifelse(ci_table$Lower_95 > 0 | ci_table$Upper_95 < 0, "Yes", "No")
+print(ci_table)
+
+library(xtable)
+xtable(ci_table)
