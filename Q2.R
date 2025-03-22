@@ -104,8 +104,8 @@ ci_table$Significant <- ifelse(ci_table$Lower_95 > 0 | ci_table$Upper_95 < 0, "-
 print(ci_table)
 
 # Print for latex format
-library(xtable)
-xtable(ci_table)
+#library(xtable)
+#xtable(ci_table)
 
 
 
