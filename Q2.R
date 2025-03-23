@@ -35,6 +35,7 @@ acf(model_TE$residuals, main="Autocorrelation")
 model_with_lag <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
                        solar_S + wind + DSN + I(DSN^2), data = demand_df)
 summary(model_with_lag)
+summary(model_with_lag)$sigma^2
 AIC(model_with_lag)
 par(mfrow=c(1,1))
 acf(model_with_lag$residuals, main="Autocorrelation")
