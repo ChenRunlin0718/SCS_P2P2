@@ -64,3 +64,35 @@ simulated_max_demand <- simulated_weather %>%
   summarise(max_predicted_demand = max(predicted_demand, na.rm = TRUE))
 
 print(simulated_max_demand)
+
+
+# Q4 future deletd
+
+# Step 1: 获取预测区间（fit, lwr, upr）
+pred_interval <- predict(model_with_lag,
+                         newdata = demand_df_future,
+                         interval = "prediction",
+                         level = 0.95)
+
+# Step 2: 转成 data frame，并添加日期
+pred_df <- cbind(
+  Date = demand_df_future$Date,
+  simulated_year = demand_df_future$simulated_year,  # 如果有
+  as.data.frame(pred_interval)
+)
+
+# 查看前几行
+head(pred_df)
+
+
+# 绑定结果（列名为 fit, lwr, upr）
+demand_df_future <- cbind(demand_df_future, as.data.frame(pred_interval))
+
+ggplot(demand_df_future, aes(x = Date)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "lightblue", alpha = 0.5) +
+  geom_line(aes(y = predicted_demand), color = "blue") +
+  labs(title = "Predicted Peak Demand with 95% Prediction Interval",
+       x = "Date", y = "Demand (MW)") +
+  facet_wrap(~ simulated_year, scales = "free_x") +
+  theme_minimal()
+
