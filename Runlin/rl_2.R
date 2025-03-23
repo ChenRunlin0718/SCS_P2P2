@@ -188,7 +188,7 @@ plot(full_model_1)
 
 
 ### Q3
-
+par(mfrow=c(1,1))
 final_model <- lm(
   demand_gross ~ start_year + start_year:TE +
     wdayindex + solar_S + wind
@@ -196,6 +196,19 @@ final_model <- lm(
   data = demand_df
 )
 
+demand_modelling_filtered
+demand_df <- demand_modelling_filtered  %>%
+  filter(!(format(Date, "%m-%d") %in% c("01-01", "12-23", "12-24", "12-25", "12-26", "12-27")))
+
+
+demand_df <- demand_df %>%
+  arrange(Date) %>%
+  mutate(lag1_demand = lag(demand_gross, 1))
+
+final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
+                       solar_S + wind + DSN + I(DSN^2), data = demand_df)
+
+summary(final_model)
 
 #########################################
 # (2) Subset the 2013–14 winter data
@@ -287,20 +300,20 @@ results <- results[order(results$winter_start), ]
 plot(
   x    = results$winter_start,
   y    = results$max_pred_demand,
-  type = "o",           # 'o' means draw both lines and points
-  pch  = 16,            # plotting symbol
-  lty  = 1,             # solid line
-  lwd  = 2,             # line thickness
+  type = "o",
+  pch  = 16, lty = 1, lwd = 2,
+  ylim = range(results$max_pred_demand, 
+               actual_max_1314, 
+               model_based_max_1314),
   xlab = "Historic Winter (start year)",
   ylab = "Max Demand (MW)",
   main = "Counterfactual 2013–14 Max Demand vs. Actual & Model Baseline"
 )
-# Add a horizontal line for the *actual* 2013–14 maximum
 abline(h = actual_max_1314, col = "red", lwd = 2, lty = 2)
-# Add a horizontal line for the *model-based* 2013–14 maximum
 abline(h = model_based_max_1314, col = "blue", lwd = 2, lty = 3)
+
 # Legend
-legend("topright",
+legend("center",
        legend = c("Counterfactual/New Max", "Actual 2013–14", "Model Baseline 2013–14"),
        col    = c("black", "red", "blue"),
        lty    = c(1, 2, 3),
@@ -314,3 +327,249 @@ legend("topright",
 
 
 
+
+
+###question 3 (way2)
+
+
+
+final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
+                    solar_S + wind + DSN + I(DSN^2), data = demand_df)
+summary(final_model)
+
+# Suppose your complete dataset is `demand_df`
+# which spans multiple winters 1991..2015, or similar.
+# The column 'start_year' indicates which winter each row belongs to.
+
+train_data <- subset(demand_df, start_year != 2013)  # Exclude 2013
+test_2013  <- subset(demand_df, start_year == 2013)  # only 2013
+
+# Example formula; adapt to your actual variables
+model_no2013 <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
+                     solar_S + wind + DSN + I(DSN^2),
+  data = train_data
+)
+
+summary(model_no2013)
+
+# Predict using the new model
+
+pred_2013 <- predict(model_no2013, newdata = test_2013)
+
+# The "model-based" maximum for 2013–14
+model_based_max_2013 <- max(pred_2013, na.rm = TRUE)
+
+# The actual observed max in 2013–14
+actual_max_2013 <- max(test_2013$demand_gross, na.rm = TRUE)
+
+cat("Model-based 2013–14 Max (trained w/o 2013):", model_based_max_2013, "\n")
+cat("Actual 2013–14 Max Demand:", actual_max_2013, "\n")
+
+compute_max_demand_for_hist_weather <- function(model, baseline_2013, hist_winter) {
+  # Make a copy of 2013–14 skeleton
+  scenario_df <- baseline_2013
+  
+  # Merge or replace weather columns from 'hist_winter'.
+  # Typically, you'd align them by DSN or day index:
+  scenario_df <- merge(
+    scenario_df[ , !(names(scenario_df) %in% c("temp","wind","solar_S","TE","lag1_demand"))],
+    hist_winter[ , c("DSN","temp","wind","solar_S","TE","lag1_demand")],
+    by = "DSN",
+    all.x = TRUE
+  )
+  
+  # Predict demand
+  pred <- predict(model, newdata = scenario_df)
+  max(pred, na.rm = TRUE)
+}
+
+# Identify all winters except 2013
+unique_winters <- sort(unique(demand_df$start_year))
+unique_winters <- unique_winters[unique_winters != 2013]
+
+results <- data.frame(
+  hist_winter_start = integer(),
+  max_pred_demand   = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# We'll call the test_2013 as 'baseline_2013'
+for(yr in unique_winters) {
+  hist_winter_df <- subset(demand_df, start_year == yr)
+  
+  scenario_max <- compute_max_demand_for_hist_weather(
+    model          = model_no2013,
+    baseline_2013  = test_2013,
+    hist_winter    = hist_winter_df
+  )
+  
+  results <- rbind(results, 
+                   data.frame(hist_winter_start = yr,
+                              max_pred_demand = scenario_max))
+}
+
+# Inspect
+results
+
+
+# Assume 'results' has:
+#   results$hist_winter_start       (the older winter, e.g. 1991, 1992...)
+#   results$max_pred_demand        (predicted max for that scenario)
+# And you have numeric scalars:
+#   actual_max_2013
+#   model_based_max_2013
+
+# Basic bar chart
+barplot(
+  height    = results$max_pred_demand,
+  names.arg = results$hist_winter_start,
+  main      = "2013–14 Peak Demand Under Older Winters' Weather",
+  xlab      = "Historic Winter (start year)",
+  ylab      = "Model-Predicted Max Demand (MW)",
+  las       = 2            # rotate labels if needed
+)
+
+# Add horizontal lines for actual and model-based 2013 peaks
+abline(h = actual_max_2013, col = "red", lwd = 2, lty = 2)
+abline(h = model_based_max_2013, col = "blue", lwd = 2, lty = 3)
+
+legend(
+  "topright",
+  legend = c("Actual 2013–14 Peak", "Model-Based 2013–14"),
+  col    = c("red", "blue"),
+  lty    = c(2, 3),
+  lwd    = 2
+)
+
+# 1) Sort results by hist_winter_start (if not already sorted)
+results_sorted <- results[order(results$hist_winter_start), ]
+
+plot(
+  x    = results_sorted$hist_winter_start,
+  y    = results_sorted$max_pred_demand,
+  type = "o",
+  pch  = 16,
+  lty  = 1,
+  lwd  = 2,
+  ylim = range(results_sorted$max_pred_demand, actual_max_2013, model_based_max_2013),
+  xlab = "Historic Winter (start year)",
+  ylab = "Model-Predicted Max Demand (MW)",
+  main = "2013–14 Peak Demand Under Older Winters' Weather"
+)
+abline(h = actual_max_2013, col = "red", lty = 2, lwd = 2)
+abline(h = model_based_max_2013, col = "blue", lty = 3, lwd = 2)
+
+legend(
+  "topleft",
+  legend = c("New Peak after substitution", "Actual 2013–14 Max", "Model-predited 2013–14 Max"),
+  col    = c("black", "red", "blue"),
+  lty    = c(1, 2, 3),
+  pch    = c(16, NA, NA),
+  lwd    = 2
+)
+
+
+
+
+
+
+###q3, redo
+
+##############################
+# 1. Prepare the Training Data 
+# (exclude 2013 from the training set)
+##############################
+train_data <- subset(demand_df, start_year != 2013)
+
+# Ensure 'start_year' factor retains all possible levels, including "2013"
+train_data$start_year <- factor(
+  train_data$start_year,
+  levels = levels(demand_df$start_year)
+)
+
+##############################
+# 2. Fit the Model on Data Excluding 2013
+##############################
+# This model includes an intercept shift by winter, a winter-specific temperature slope,
+# day-of-week effects, wind, solar, a quadratic in DSN, and lagged demand.
+model_no2013 <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
+                     solar_S + wind + DSN + I(DSN^2),
+  data = train_data
+)
+summary(model_no2013)
+
+##############################
+# 3. Create the 2013 Baseline (Skeleton)
+# We use the 2013 data for its calendar structure (dates, DSN, wdayindex, etc.)
+##############################
+# The 2013 "skeleton" means all columns for 2013
+# We'll soon overwrite the weather columns with older winters' values.
+baseline_2013 <- subset(demand_df, start_year == 2013)
+
+# Sort them by DSN if needed (optional)
+baseline_2013 <- baseline_2013[order(baseline_2013$DSN), ]
+
+
+compute_scenario_max <- function(model, baseline_2013, hist_winter_df) {
+  # 1) Sort the older winter data to match row order
+  hist_winter_df <- hist_winter_df[order(hist_winter_df$DSN), ]
+  
+  # 2) Make a copy of the baseline 2013
+  scenario_df <- baseline_2013
+  
+  # 3) Overwrite the weather columns from hist_winter_df
+  #    (and anything else you want to "import" from the older winter)
+  scenario_df$TE         <- hist_winter_df$TE
+  scenario_df$wind       <- hist_winter_df$wind
+  scenario_df$solar_S    <- hist_winter_df$solar_S
+  scenario_df$lag1_demand <- hist_winter_df$lag1_demand
+  
+  # 4) Predict daily demand using the model (trained w/o 2013)
+  preds <- predict(model, newdata = scenario_df)
+  
+  # 5) Return the maximum predicted demand
+  max(preds, na.rm = TRUE)
+}
+
+
+# 1) Identify older winters in 'train_data'
+unique_winters <- sort(unique(train_data$start_year))
+
+# 2) Prepare a results data frame
+results <- data.frame(
+  hist_year = unique_winters,
+  max_pred  = NA_real_
+)
+
+# 3) For each older winter, substitute its weather
+for (i in seq_along(unique_winters)) {
+  yr <- unique_winters[i]
+  hist_winter_df <- subset(demand_df, start_year == yr)
+  
+  # Possibly ensure hist_winter_df has the same # of rows as baseline_2013
+  # and is in the same DSN order (as we do above)
+  
+  results$max_pred[i] <- compute_scenario_max(
+    model_no2013,
+    baseline_2013,
+    hist_winter_df
+  )
+}
+
+results
+
+
+plot(
+  x    = results$hist_year,
+  y    = results$max_pred,
+  type = "o",
+  pch  = 16, lty = 1, lwd = 2,
+  xlab = "Historic Winter (start year)",
+  ylab = "Counterfactual Max Demand (MW)",
+  main = "2013–14 Peak Demand Under Older Winters' Weather"
+)
+
+# (Optional) Add reference lines for actual 2013 max or model-based 2013 max
+# from the real 2013 weather
+actual_2013 <- max(baseline_2013$demand_gross, na.rm = TRUE)
+abline(h = actual_2013, col = "red", lwd = 2, lty = 2)

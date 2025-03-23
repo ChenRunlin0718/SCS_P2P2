@@ -256,6 +256,129 @@ print(ci_table)
 
 
 # ----Q3----
+final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
+                       solar_S + wind + DSN + I(DSN^2), data = demand_df)
+summary(final_model)
+
+
+par(mfrow=c(1,1))
+
+#########################################
+# (2) Subset the 2013–14 winter data
+#########################################
+winter_1314 <- subset(demand_df, start_year == 2013)
+winter_without1314 <- subset(demand_df, start_year != 2013)
+# The actual max demand in 2013–14:
+actual_max_1314 <- max(winter_1314$demand_gross, na.rm = TRUE)
+
+# Also predict baseline 2013–14 demand with its own actual weather,
+# for reference, so we have a "model-based" 2013–14 max
+predicted_1314 <- predict(final_model, newdata = winter_without1314)   ####### winter_1314 by Chatgpt
+model_based_max_1314 <- max(predicted_1314, na.rm = TRUE)
+
+cat("Actual 2013–14 max demand:", actual_max_1314, "\n")
+cat("Model-based 2013–14 max demand:", model_based_max_1314, "\n")
+
+#########################################
+# (3) Helper: substitute weather, get predicted max
+#########################################
+compute_max_demand_for_historic_weather <- function(model,
+                                                    baseline_1314,
+                                                    hist_winter) {
+  # 1. Copy the 2013–14 dataset
+  scenario_df <- baseline_1314
+  
+  # 2. Merge the older winter’s weather columns into 2013–14 rows
+  #    by DSN so day i lines up with day i
+  scenario_df <- merge(
+    scenario_df[ , !(names(scenario_df) %in% c("temp", "wind","solar_S"))],
+    hist_winter[ , c("DSN", "temp", "wind","solar_S")],
+    by = "DSN",
+    all.x = TRUE
+  )
+  
+  # 3. Predict demand using the final model
+  pred <- predict(model, newdata = scenario_df)
+  
+  # 4. Return the max predicted demand
+  max(pred, na.rm = TRUE)
+}
+
+#########################################
+# (4) Loop over each older winter
+#########################################
+unique_winters <- sort(unique(demand_df$start_year))
+results <- data.frame(
+  winter_start          = integer(),
+  max_pred_demand       = numeric(),
+  diff_from_actual_1314 = numeric(), # compare to actual 2013–14
+  diff_from_model_1314  = numeric()  # compare to predicted 2013–14
+)
+
+for(yr in unique_winters) {
+  if(yr == 2013) next  # skip or not, up to you
+  
+  hist_winter_df <- subset(demand_df, start_year == yr)
+  
+  # Make sure lengths match or handle partial merges. 
+  # Then compute the scenario's max
+  scenario_max <- compute_max_demand_for_historic_weather(
+    model          = final_model,
+    baseline_1314  = winter_without1314,  ####### winter_1314 by Chatgpt
+    hist_winter    = hist_winter_df
+  )
+  
+  # Compare to the *actual* 2013–14 max
+  delta_actual <- scenario_max - actual_max_1314
+  
+  # Compare to the *model-based* 2013–14 max
+  delta_model  <- scenario_max - model_based_max_1314
+  
+  results <- rbind(results, data.frame(
+    winter_start          = yr,
+    max_pred_demand       = scenario_max,
+    diff_from_actual_1314 = delta_actual,
+    diff_from_model_1314  = delta_model
+  ))
+}
+
+#########################################
+# (5) Look at results
+#########################################
+print(results)
+
+# Make sure results$winter_start is sorted in ascending order
+results <- results[order(results$winter_start), ]
+
+plot(
+  x    = results$winter_start,
+  y    = results$max_pred_demand,
+  type = "o",
+  pch  = 16, lty = 1, lwd = 2,
+  ylim = range(results$max_pred_demand, 
+               actual_max_1314, 
+               model_based_max_1314),
+  xlab = "Historic Winter (start year)",
+  ylab = "Max Demand (MW)",
+  main = "Counterfactual 2013–14 Max Demand vs. Actual & Model Baseline"
+)
+abline(h = actual_max_1314, col = "red", lwd = 2, lty = 2)
+abline(h = model_based_max_1314, col = "blue", lwd = 2, lty = 3)
+
+# Legend
+legend("center",
+       legend = c("New Peak after substitution", "Actual 2013–14 Max", "Model-predited 2013–14 Max"),
+       col    = c("black", "red", "blue"),
+       lty    = c(1, 2, 3),
+       pch    = c(16, NA, NA),
+       lwd    = 2)
+
+
+
+
+
+
+
 
 # ----Q4----
 
