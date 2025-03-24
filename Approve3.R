@@ -273,7 +273,7 @@ actual_max_1314 <- max(winter_1314$demand_gross, na.rm = TRUE)
 
 # Also predict baseline 2013–14 demand with its own actual weather,
 # for reference, so we have a "model-based" 2013–14 max
-predicted_1314 <- predict(final_model, newdata = winter_without1314)   ####### winter_1314 by Chatgpt
+predicted_1314 <- predict(final_model, newdata = winter_1314)   ####### winter_1314 by Chatgpt
 model_based_max_1314 <- max(predicted_1314, na.rm = TRUE)
 
 cat("Actual 2013–14 max demand:", actual_max_1314, "\n")
@@ -324,7 +324,7 @@ for(yr in unique_winters) {
   # Then compute the scenario's max
   scenario_max <- compute_max_demand_for_historic_weather(
     model          = final_model,
-    baseline_1314  = winter_without1314,  ####### winter_1314 by Chatgpt
+    baseline_1314  = winter_1314,  ### winter_1314 by AI
     hist_winter    = hist_winter_df
   )
   
@@ -350,6 +350,8 @@ print(results)
 # Make sure results$winter_start is sorted in ascending order
 results <- results[order(results$winter_start), ]
 
+
+### With blue line (model_predicted max)
 plot(
   x    = results$winter_start,
   y    = results$max_pred_demand,
@@ -374,7 +376,33 @@ legend("center",
        lwd    = 2)
 
 
+### Without blue line (model_predicted max)
+par(mfrow=c(1,1))
 
+plot(
+  x    = results$winter_start,
+  y    = results$max_pred_demand,
+  type = "o",              # 'o' means draw both lines and points
+  pch  = 16,               # plotting symbol
+  lty  = 1,                # solid line
+  lwd  = 2,                # line thickness
+  ylim = range(results$max_pred_demand, actual_max_1314),
+  xlab = "Historic Winter (start year)",
+  ylab = "Max Demand (MW)",
+  main = "Counterfactual 2013–14 Max Demand vs. Actual"
+)
+
+# Add a horizontal line for the *actual* 2013–14 maximum
+abline(h = actual_max_1314, col = "red", lwd = 2, lty = 2)
+
+# Legend (without blue line)
+legend("center",
+       legend = c("New Peak after substitution", "Actual 2013–14 Max"),
+       col    = c("black", "red"),
+       lty    = c(1, 2),
+       pch    = c(16, NA),
+       lwd    = 2
+)
 
 
 

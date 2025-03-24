@@ -189,24 +189,8 @@ plot(full_model_1)
 
 ### Q3
 par(mfrow=c(1,1))
-final_model <- lm(
-  demand_gross ~ start_year + start_year:TE +
-    wdayindex + solar_S + wind
-  + DSN + I(DSN^2),
-  data = demand_df
-)
-
-demand_modelling_filtered
-demand_df <- demand_modelling_filtered  %>%
-  filter(!(format(Date, "%m-%d") %in% c("01-01", "12-23", "12-24", "12-25", "12-26", "12-27")))
-
-
-demand_df <- demand_df %>%
-  arrange(Date) %>%
-  mutate(lag1_demand = lag(demand_gross, 1))
-
 final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
-                       solar_S + wind + DSN + I(DSN^2), data = demand_df)
+                    solar_S + wind + DSN + I(DSN^2), data = demand_df)
 
 summary(final_model)
 
@@ -214,13 +198,13 @@ summary(final_model)
 # (2) Subset the 2013–14 winter data
 #########################################
 winter_1314 <- subset(demand_df, start_year == 2013)
-
+winter_without1314 <- subset(demand_df, start_year != 2013)
 # The actual max demand in 2013–14:
 actual_max_1314 <- max(winter_1314$demand_gross, na.rm = TRUE)
 
 # Also predict baseline 2013–14 demand with its own actual weather,
 # for reference, so we have a "model-based" 2013–14 max
-predicted_1314 <- predict(final_model, newdata = winter_1314)
+predicted_1314 <- predict(final_model, newdata = winter_without1314)
 model_based_max_1314 <- max(predicted_1314, na.rm = TRUE)
 
 cat("Actual 2013–14 max demand:", actual_max_1314, "\n")
@@ -238,8 +222,8 @@ compute_max_demand_for_historic_weather <- function(model,
   # 2. Merge the older winter’s weather columns into 2013–14 rows
   #    by DSN so day i lines up with day i
   scenario_df <- merge(
-    scenario_df[ , !(names(scenario_df) %in% c("temp", "wind"))],
-    hist_winter[ , c("DSN", "temp", "wind")],
+    scenario_df[ , !(names(scenario_df) %in% c("temp", "wind","solar_S"))],
+    hist_winter[ , c("DSN", "temp", "wind","solar_S")],
     by = "DSN",
     all.x = TRUE
   )
@@ -271,7 +255,7 @@ for(yr in unique_winters) {
   # Then compute the scenario's max
   scenario_max <- compute_max_demand_for_historic_weather(
     model          = final_model,
-    baseline_1314  = winter_1314,
+    baseline_1314  = winter_without1314,
     hist_winter    = hist_winter_df
   )
   
@@ -336,7 +320,7 @@ legend("center",
 final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
                     solar_S + wind + DSN + I(DSN^2), data = demand_df)
 summary(final_model)
-
+AIC(final_model)
 # Suppose your complete dataset is `demand_df`
 # which spans multiple winters 1991..2015, or similar.
 # The column 'start_year' indicates which winter each row belongs to.
@@ -354,7 +338,7 @@ summary(model_no2013)
 
 # Predict using the new model
 
-pred_2013 <- predict(model_no2013, newdata = test_2013)
+pred_2013 <- predict(model_no2013, newdata = train_data)
 
 # The "model-based" maximum for 2013–14
 model_based_max_2013 <- max(pred_2013, na.rm = TRUE)
@@ -573,3 +557,158 @@ plot(
 # from the real 2013 weather
 actual_2013 <- max(baseline_2013$demand_gross, na.rm = TRUE)
 abline(h = actual_2013, col = "red", lwd = 2, lty = 2)
+
+
+
+
+
+## Q3 redo redo?
+
+# 加载必要的库
+library(dplyr)
+library(lubridate)
+
+# 假设你的数据框已经加载为demand_df
+
+# 定义最终模型
+final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE + wdayindex + 
+                    solar_S + wind + DSN + I(DSN^2), data = demand_df)
+
+# 提取2013-14年冬季的数据
+winter_2013_2014 <- demand_df %>%
+  filter(start_year == 2013)
+
+# 提取其他年份的天气数据
+other_years_weather <- demand_df %>%
+  filter(start_year != 2013) %>%
+  select(Date, temp, TE, TO)
+
+# 创建一个函数，用于替换天气数据并预测
+predict_with_different_weather <- function(weather_year) {
+  # 提取指定年份的天气数据
+  specific_year_weather <- demand_df %>%
+    filter(start_year == weather_year) %>%
+    select(Date, temp, TE, TO)
+  
+  # 将2013-14年的非天气相关变量与指定年份的天气数据结合
+  combined_data <- winter_2013_2014 %>%
+    select(-temp, -TE, -TO) %>%
+    left_join(specific_year_weather, by = "Date")
+  
+  # 使用最终模型进行预测
+  predicted_demand <- predict(final_model, newdata = combined_data)
+  
+  # 找出最大日需求量
+  max_demand <- max(predicted_demand, na.rm = TRUE)
+  
+  return(max_demand)
+}
+
+# 测试不同年份的天气条件
+weather_years <- unique(demand_df$start_year)
+weather_years <- weather_years[weather_years != 2013]  # 排除2013年
+
+results <- sapply(weather_years, predict_with_different_weather)
+
+# 将结果转换为数据框
+results_df <- data.frame(
+  weather_year = weather_years,
+  max_demand = results
+)
+
+# 可视化结果
+library(ggplot2)
+
+ggplot(results_df, aes(x = weather_year, y = max_demand)) +
+  geom_bar(stat = "identity") +
+  labs(title = "2013-14年冬季最大日需求量在不同天气条件下的变化",
+       x = "天气年份",
+       y = "最大日需求量 (MW)") +
+  theme_minimal()
+
+
+
+
+
+## Question 3 using bootstraping method
+set.seed(123)  # for reproducibility
+
+# Step 1: Prep model and data
+final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE +
+                    wdayindex + solar_S + wind + DSN + I(DSN^2),
+                  data = demand_df)
+
+winter_1314 <- subset(demand_df, start_year == 2013)
+unique_winters <- sort(unique(demand_df$start_year))
+unique_winters <- unique_winters[unique_winters != 2013]
+
+# Step 2: Define function to compute bootstrapped max for a given winter
+bootstrap_max_demand <- function(model, baseline_1314, hist_winter, B = 1000) {
+  max_vals <- numeric(B)
+  
+  for (b in 1:B) {
+    # Sample rows from hist_winter with replacement
+    sampled_hist <- hist_winter[sample(nrow(hist_winter), replace = TRUE), ]
+    
+    # Merge weather into 2013–14 dataset by DSN
+    scenario_df <- merge(
+      baseline_1314[ , !(names(baseline_1314) %in% c("temp", "wind", "solar_S"))],
+      sampled_hist[ , c("DSN", "temp", "wind", "solar_S")],
+      by = "DSN",
+      all.x = TRUE
+    )
+    
+    preds <- predict(model, newdata = scenario_df)
+    max_vals[b] <- max(preds, na.rm = TRUE)
+  }
+  
+  return(max_vals)
+}
+
+# Step 3: Loop over historic years and apply bootstrap
+results_boot <- data.frame(
+  winter_start = integer(),
+  mean_max = numeric(),
+  ci_lower = numeric(),
+  ci_upper = numeric()
+)
+
+for (yr in unique_winters) {
+  hist_winter_df <- subset(demand_df, start_year == yr)
+  
+  boot_vals <- bootstrap_max_demand(
+    model = final_model,
+    baseline_1314 = winter_1314,
+    hist_winter = hist_winter_df,
+    B = 1000  # number of bootstraps
+  )
+  
+  results_boot <- rbind(results_boot, data.frame(
+    winter_start = yr,
+    mean_max = mean(boot_vals, na.rm = TRUE),
+    ci_lower = quantile(boot_vals, 0.025, na.rm = TRUE),
+    ci_upper = quantile(boot_vals, 0.975, na.rm = TRUE)
+  ))
+}
+
+results_boot$winter_start <- as.numeric(as.character(results_boot$winter_start))
+
+# Step 4: Plot with confidence interval
+plot(results_boot$winter_start, results_boot$mean_max, type = "o",
+     ylim = range(results_boot$ci_lower, results_boot$ci_upper),
+     xlab = "Historic Winter (start year)", ylab = "Peak Demand (MW)",
+     main = "Bootstrapped 2013–14 Peak Demand under Historic Weather")
+
+arrows(results_boot$winter_start, results_boot$ci_lower,
+       results_boot$winter_start, results_boot$ci_upper,
+       angle = 90, code = 3, length = 0.05, col = "gray")
+
+abline(h = max(winter_1314$demand_gross), col = "red", lty = 2)
+abline(h = max(predict(final_model, newdata = winter_1314)), col = "blue", lty = 3)
+
+legend("center",
+       legend = c("Bootstrapped Mean", "95% CI", "Actual 2013–14", "Model-Based 2013–14"),
+       col = c("black", "gray", "red", "blue"),
+       lty = c(1, 1, 2, 3),
+       pch = c(1, NA, NA, NA))
+
