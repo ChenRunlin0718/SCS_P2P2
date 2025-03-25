@@ -319,10 +319,97 @@ comparison_table <- combined_data %>%
 
 
 
+# ----linear model fit temp solar wind----
+
+# ---- Estimate and project weather variable trends (temp, wind, solar_S) ----
+
+# Step 1: Calculate annual average weather values from 1991 to 2000
+historical_weather <- demand_df %>%
+  filter(year >= 1991 & year <= 2000) %>%
+  group_by(year) %>%
+  summarise(
+    avg_temp = mean(temp, na.rm = TRUE),
+    avg_wind = mean(wind, na.rm = TRUE),
+    avg_solar = mean(solar_S, na.rm = TRUE)
+  )
+
+# Step 2: Fit linear trends for each variable
+temp_trend <- lm(TE ~ year, data = demand_df)
+wind_trend <- lm(avg_wind ~ year, data = historical_weather)
+solar_trend <- lm(avg_solar ~ year, data = historical_weather)
+
+# Step 3: Extract slopes (annual change)
+temp_slope <- coef(temp_trend)[["year"]]
+wind_slope <- coef(wind_trend)[["year"]]
+solar_slope <- coef(solar_trend)[["year"]]
+
+# Step 4: Get the baseline (year 2000) values
+base_temp <- historical_weather %>% filter(year == 2000) %>% pull(avg_temp)
+base_wind <- historical_weather %>% filter(year == 2000) %>% pull(avg_wind)
+base_solar <- historical_weather %>% filter(year == 2000) %>% pull(avg_solar)
+
+# Step 5: Project average values from 2014 to 2023
+future_years <- 2014:2023
+years_since_2000 <- future_years - 2000
+
+future_weather <- data.frame(
+  simulated_year = future_years,
+  simulated_temp = base_temp + temp_slope * years_since_2000,
+  simulated_wind = base_wind + wind_slope * years_since_2000,
+  simulated_solar = base_solar + solar_slope * years_since_2000
+)
+
+# Step 6: Inject future climate values into prediction dataset
+demand_df_future <- demand_df_future %>%
+  left_join(future_weather, by = "simulated_year") %>%
+  mutate(
+    temp = simulated_temp,
+    wind = simulated_wind,
+    solar_S = simulated_solar
+  )
+
+# Step 7: Generate updated predictions using the adjusted weather values
+demand_df_future$predicted_demand_adjusted <- predict(model_with_lag, newdata = demand_df_future)
 
 
+# ----mean of TE, solar_S, wind----
 
+yearly_avg <- demand_df %>%
+  group_by(start_year) %>%
+  summarise(
+    avg_TE = mean(TE, na.rm = TRUE),
+    avg_solar_S = mean(solar_S, na.rm = TRUE),
+    avg_wind = mean(wind, na.rm = TRUE)
+  )
 
+yearly_avg$start_year <- as.numeric(as.character(yearly_avg$start_year))
+
+# 折线图：TE
+ggplot(yearly_avg, aes(x = start_year, y = avg_TE)) +
+  geom_line(color = "#1f77b4", size = 1.2) +
+  geom_point(color = "#1f77b4", size = 2) +
+  labs(title = "Yearly Average of TE",
+       x = "Year",
+       y = "Average TE") +
+  theme_minimal(base_size = 14)
+
+# 折线图：solar_S
+ggplot(yearly_avg, aes(x = start_year, y = avg_solar_S)) +
+  geom_line(color = "#ff7f0e", size = 1.2) +
+  geom_point(color = "#ff7f0e", size = 2) +
+  labs(title = "Yearly Average of solar_S",
+       x = "Year",
+       y = "Average solar_S") +
+  theme_minimal(base_size = 14)
+
+# 折线图：wind
+ggplot(yearly_avg, aes(x = start_year, y = avg_wind)) +
+  geom_line(color = "#2ca02c", size = 1.2) +
+  geom_point(color = "#2ca02c", size = 2) +
+  labs(title = "Yearly Average of Wind",
+       x = "Year",
+       y = "Average Wind") +
+  theme_minimal(base_size = 14)
 
 
 
