@@ -91,7 +91,7 @@ ggplot(results, aes(x = year, y = max_predicted_demand)) +
   
 
 
-# Boostrap
+# Boostrap 
 # 设定 Bootstrap 迭代次数
 n_bootstrap <- 1000
 set.seed(123)
