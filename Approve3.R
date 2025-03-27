@@ -291,8 +291,8 @@ compute_max_demand_for_historic_weather <- function(model,
   # 2. Merge the older winter’s weather columns into 2013–14 rows
   #    by DSN so day i lines up with day i
   scenario_df <- merge(
-    scenario_df[ , !(names(scenario_df) %in% c("temp", "wind","solar_S"))],
-    hist_winter[ , c("DSN", "temp", "wind","solar_S")],
+    scenario_df[ , !(names(scenario_df) %in% c("TE", "wind","solar_S"))],
+    hist_winter[ , c("DSN", "TE", "wind","solar_S")],
     by = "DSN",
     all.x = TRUE
   )
@@ -351,6 +351,7 @@ print(results)
 results <- results[order(results$winter_start), ]
 
 
+
 ### With blue line (model_predicted max)
 plot(
   x    = results$winter_start,
@@ -378,7 +379,6 @@ legend("center",
 
 ### Without blue line (model_predicted max)
 par(mfrow=c(1,1))
-
 plot(
   x    = results$winter_start,
   y    = results$max_pred_demand,
@@ -406,6 +406,8 @@ legend("center",
 
 
 
+
+### Q3 with bootstrap
 
 
 # ----Q4----

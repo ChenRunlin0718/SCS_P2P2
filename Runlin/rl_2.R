@@ -255,7 +255,7 @@ for(yr in unique_winters) {
   # Then compute the scenario's max
   scenario_max <- compute_max_demand_for_historic_weather(
     model          = final_model,
-    baseline_1314  = winter_without1314,
+    baseline_1314  = winter_without1314,   ### 
     hist_winter    = hist_winter_df
   )
   
@@ -652,8 +652,8 @@ bootstrap_max_demand <- function(model, baseline_1314, hist_winter, B = 1000) {
     
     # Merge weather into 2013–14 dataset by DSN
     scenario_df <- merge(
-      baseline_1314[ , !(names(baseline_1314) %in% c("temp", "wind", "solar_S"))],
-      sampled_hist[ , c("DSN", "temp", "wind", "solar_S")],
+      baseline_1314[ , !(names(baseline_1314) %in% c("TE", "wind", "solar_S"))],
+      sampled_hist[ , c("DSN", "TE", "wind", "solar_S")],
       by = "DSN",
       all.x = TRUE
     )
@@ -706,9 +706,108 @@ arrows(results_boot$winter_start, results_boot$ci_lower,
 abline(h = max(winter_1314$demand_gross), col = "red", lty = 2)
 abline(h = max(predict(final_model, newdata = winter_1314)), col = "blue", lty = 3)
 
-legend("center",
-       legend = c("Bootstrapped Mean", "95% CI", "Actual 2013–14", "Model-Based 2013–14"),
-       col = c("black", "gray", "red", "blue"),
-       lty = c(1, 1, 2, 3),
-       pch = c(1, NA, NA, NA))
 
+# Place legend outside the plot (to the right)
+legend("topleft", inset = c(0, -0.11), 
+       legend = c("New peak after substitution", "95% CI", "Actual 2013–14", "Model-Based 2013–14"),
+       col = c("black", "gray", "red", "blue"),
+       lty = c(1, 2),
+       pch = c(16, NA),
+       lwd = 2,
+       bty = "n")  # no box around the legend
+
+# Reset to default plotting parameters
+par(old_p)
+
+
+
+
+### Merge by month_day
+
+library(lubridate)
+
+set.seed(123)  # for reproducibility
+
+# Step 1: Prep model and data
+final_model <- lm(demand_gross ~ lag1_demand + start_year + start_year:TE +
+                    wdayindex + solar_S + wind + DSN + I(DSN^2),
+                  data = demand_df)
+
+# Extract 2013–14 winter and create month-day column for merging
+winter_1314 <- subset(demand_df, start_year == 2013)
+winter_1314$month_day <- format(as.Date(winter_1314$Date), "%m-%d")
+
+unique_winters <- sort(unique(demand_df$start_year))
+unique_winters <- unique_winters[unique_winters != 2013]
+
+# Step 2: Define bootstrapping function using month-day match
+bootstrap_max_demand <- function(model, baseline_1314, hist_winter, B = 1000) {
+  max_vals <- numeric(B)
+  
+  hist_winter$month_day <- format(as.Date(hist_winter$Date), "%m-%d")
+  
+  for (b in 1:B) {
+    # Sample historical weather with replacement
+    sampled_hist <- hist_winter[sample(nrow(hist_winter), replace = TRUE), ]
+    
+    # Merge based on month and day
+    scenario_df <- merge(
+      baseline_1314[ , !(names(baseline_1314) %in% c("TE", "wind", "solar_S"))],
+      sampled_hist[ , c("month_day", "TE", "wind", "solar_S")],
+      by = "month_day",
+      all.x = TRUE
+    )
+    
+    preds <- predict(model, newdata = scenario_df)
+    max_vals[b] <- max(preds, na.rm = TRUE)
+  }
+  
+  return(max_vals)
+}
+
+# Step 3: Loop over each historical year
+results_boot <- data.frame(
+  winter_start = integer(),
+  mean_max = numeric(),
+  ci_lower = numeric(),
+  ci_upper = numeric()
+)
+
+for (yr in unique_winters) {
+  hist_winter_df <- subset(demand_df, start_year == yr)
+  
+  boot_vals <- bootstrap_max_demand(
+    model = final_model,
+    baseline_1314 = winter_1314,
+    hist_winter = hist_winter_df,
+    B = 1000
+  )
+  
+  results_boot <- rbind(results_boot, data.frame(
+    winter_start = yr,
+    mean_max = mean(boot_vals, na.rm = TRUE),
+    ci_lower = quantile(boot_vals, 0.025, na.rm = TRUE),
+    ci_upper = quantile(boot_vals, 0.975, na.rm = TRUE)
+  ))
+}
+
+# Step 4: Plot results
+plot(results_boot$winter_start, results_boot$mean_max, type = "o",
+     ylim = range(results_boot$ci_lower, results_boot$ci_upper),
+     xlab = "Historic Winter (start year)", ylab = "Peak Demand (MW)",
+     main = "Bootstrapped 2013–14 Peak Demand under Historic Weather")
+
+arrows(results_boot$winter_start, results_boot$ci_lower,
+       results_boot$winter_start, results_boot$ci_upper,
+       angle = 90, code = 3, length = 0.05, col = "gray")
+
+abline(h = max(winter_1314$demand_gross), col = "red", lty = 2)
+abline(h = max(predict(final_model, newdata = winter_1314)), col = "blue", lty = 3)
+
+legend("topright",
+       legend = c("New peak after substitution", "95% CI", "Actual 2013–14", "Model-Based 2013–14"),
+       col = c("black", "gray", "red", "blue"),
+       lty = c(1, NA, 2, 3),
+       pch = c(16, NA, NA, NA),
+       lwd = 2,
+       bty = "n")
