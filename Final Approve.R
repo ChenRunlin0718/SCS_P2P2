@@ -50,11 +50,6 @@ demand_modelling <- inner_join(demand_modelling, temp_summary, by = "Date")
 demand_modelling <- demand_modelling %>%
   mutate(wdayindex = as.numeric(as.character(wdayindex)))
 # ----Data Cleaning----
-# Lag first
-demand_modelling <- demand_modelling %>%
-  arrange(Date) %>%
-  mutate(lag1_demand = lag(demand_gross, 1))
-
 
 # keep 95% quantile of peak daily demand over a year
 demand_modelling_filtered <- demand_modelling %>%
@@ -162,7 +157,7 @@ par(mfrow=c(1,1))
 plot(c(1:3221), model_TE$residuals, type="l", xlab="Time", ylab="Residuals")
 
 acf(model_TE$residuals, main="Autocorrelation")
-
+#---- Q2-----
 # Block Residual Bootstrapping
 demand_df$resid <- residuals(model_TE)
 demand_df$fitted <- fitted(model_TE)
@@ -209,8 +204,8 @@ colMeans(boot_results2$t)  # Compare different set seed
 boot.ci(boot_results, type = "perc", index = 2)
 
 # Visualised one coefficient
-hist(boot_results$t[, 2], main = "start_year", xlab = "Coefficient")
-abline(v = coef(model_TE)[2], col = "red", lwd = 2)
+hist(boot_results$t[, 18], main = "Visualised one coefficient (No.18)", xlab = "Coefficient")
+abline(v = coef(model_TE)[18], col = "red", lwd = 2)
 
 
 # Original OLS Coefficient
@@ -257,8 +252,11 @@ result_table$Significant_95 <- ifelse(
 )
 print(result_table)
 #xtable(result_table)
+kable(result_table, format = 'latex', col.names = c("Model", "Adjusted R²", "AIC", "MSE"),
+      caption = "Model Result")
+
 #----Q3-----
-boot_iter <- 10
+boot_iter <- 500
 results <- data.frame(year = integer(), max_predicted_demand = numeric(),
                       lower_95 = numeric(), upper_95 = numeric())
 
