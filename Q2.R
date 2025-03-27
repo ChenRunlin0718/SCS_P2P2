@@ -3,7 +3,7 @@ model_TE <- lm(demand_gross ~ start_year + start_year:TE +
                  wdayindex + solar_S + wind + DSN + I(DSN^2),
                data = demand_df)
 summary(model_TE)
-# Residuals Plot
+.# Residuals Plot
 par(mfrow=c(2,2))
 plot(model_TE)
 
