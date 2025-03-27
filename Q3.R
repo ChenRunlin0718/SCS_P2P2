@@ -132,17 +132,6 @@ for (yr in 1991:2012) {
                                        upper_CI = upper_CI))
 }
 
-ggplot(results, aes(x = year, y = max_predicted_demand)) +
-  geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), fill = "lightblue", alpha = 0.4) +
-  geom_line(color = "steelblue", size = 1) +
-  geom_point(color = "steelblue") +
-  geom_hline(yintercept = real_max_demand, linetype = "dashed", color = "red", size = 1) +
-  geom_hline(yintercept = predicted_2013_demand, linetype = "dashed", color = "darkgreen", size = 1) +
-  annotate("text", x = 1991.5, y = real_max_demand + 100, label = "Actual 2013/14 Max Demand", color = "red", hjust = 0) +
-  annotate("text", x = 1991.5, y = predicted_2013_demand - 150, label = "Model Prediction (2013/14 Weather)", color = "darkgreen", hjust = 0) +
-  labs(title = "Max Predicted Demand for 2013-14 Winter Using Historical Weather (1991–2012)",
-       x = "Weather Year Used",
-       y = "Max Predicted Demand (MW)")
 
 ggplot(results, aes(x = year, y = max_predicted_demand)) +
   geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), fill = "lightblue", alpha = 0.4) +
@@ -152,7 +141,7 @@ ggplot(results, aes(x = year, y = max_predicted_demand)) +
   geom_hline(yintercept = predicted_2013_demand, linetype = "dashed", color = "darkgreen", size = 1) +
   
   # 添加蓝线说明文字
-  annotate("text", x = 1992, y = max(results$max_predicted_demand-350), 
+  annotate("text", x = 1992, y = max(results$max_predicted_demand-120), 
            label = "Max Predicted Demand (per year)", color = "steelblue", hjust = 0) +
   
   annotate("text", x = 1991.5, y = real_max_demand + 100, 
@@ -164,3 +153,48 @@ ggplot(results, aes(x = year, y = max_predicted_demand)) +
        x = "Year (1991-2012)",
        y = "Max Predicted Demand (MW)")
 
+ggplot(results, aes(x = year, y = max_predicted_demand)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue") +
+  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), width = 0.4, color = "gray50") +
+  geom_hline(yintercept = real_max_demand, linetype = "dashed", color = "red", size = 1) +
+  geom_hline(yintercept = predicted_2013_demand, linetype = "dashed", color = "darkgreen", size = 1) +
+  annotate("text", x = 1991.5, y = real_max_demand + 100, label = "Actual 2013/14 Max Demand", color = "red", hjust = 0) +
+  annotate("text", x = 1991.5, y = predicted_2013_demand - 100, label = "Model Prediction (2013/14 Weather)", color = "darkgreen", hjust = 0) +
+  labs(title = "Max Predicted Demand for 2013-14 Winter Using Historical Weather (1991–2012)",
+       x = "Weather Year Used",
+       y = "Max Predicted Demand (MW)")
+
+
+
+hline_data <- data.frame(
+  label = c("Actual 2013/14 Max Demand", "Model Prediction (2013/14 Weather)"),
+  y = c(real_max_demand, predicted_2013_demand)
+)
+
+ggplot(results, aes(x = year)) +
+  # 主线和误差线
+  geom_line(aes(y = max_predicted_demand, color = "Max Predicted Demand"), size = 1) +
+  geom_point(aes(y = max_predicted_demand, color = "Max Predicted Demand")) +
+  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI, color = "Max Predicted Demand"), width = 0.4) +
+  
+  # 添加两条水平线：实际最大值 & 用 2013/14 天气预测的最大值
+  geom_hline(yintercept = real_max_demand, linetype = "dashed", color = "red", size = 1) +
+  geom_hline(yintercept = predicted_2013_demand, linetype = "dashed", color = "darkgreen", size = 1) +
+  
+  # 图例标题和标签
+  scale_color_manual(
+    name = "Legend",
+    values = c(
+      "Max Predicted Demand" = "steelblue",
+      "Actual 2013/14 Max Demand" = "red",
+      "Model Prediction (2013/14 Weather)" = "darkgreen"
+    )
+  ) +
+  
+  labs(
+    title = "Max Predicted Demand for 2013–14 Winter Using Historical Weather (1991–2012)",
+    x = "Weather Year Used",
+    y = "Max Predicted Demand (MW)"
+  ) +
+  theme_minimal()
