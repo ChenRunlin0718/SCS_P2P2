@@ -6,6 +6,8 @@ library(corrplot)
 library(lubridate)
 library(patchwork) 
 library(knitr)
+library(xtable)
+library(boot)
 # ----load dataset----
 demand_modelling <- read_csv("SCS_demand_modelling.csv")
 hourly_temp <- read_csv("SCS_hourly_temp.csv")
@@ -254,36 +256,36 @@ result_table$Significant_95 <- ifelse(
   "-", "No"
 )
 print(result_table)
-
+#xtable(result_table)
 #----Q3-----
 boot_iter <- 10
 results <- data.frame(year = integer(), max_predicted_demand = numeric(),
                       lower_95 = numeric(), upper_95 = numeric())
 
-# 提取模型残差和拟合值
+# Extract residuals and fitted values from the original model
 resid_original <- residuals(model_TE)
 fitted_values <- fitted(model_TE)
 n <- length(fitted_values)
 
-# 添加到原始数据中（用于重采样）
+# Add residuals and fitted values to the dataset for resampling
 demand_df$resid <- resid_original
 demand_df$fitted <- fitted_values
 
-# 构建以 start_year 为单位的 winter block
+# Split data into winter blocks by 'start_year'
 winter_blocks <- split(demand_df, demand_df$start_year)
 
-# 遍历 1991 到 2012 年，替换 2013 年冬天的天气变量
+# Loop over 1991 to 2012 to substitute weather into 2013 winter structure
 for (yr in 1991:2012) {
   
-  # 拿到目标年（2013）的结构和需要预测的变量
+  # Extract 2013 winter data structure to use for prediction
   winter_df <- subset(demand_df, start_year == 2013)
   winter_df$month_day <- format(winter_df$Date, "%m-%d")
   
-  # 替代天气数据
+  # Get weather data from the target historical year
   weather_year <- subset(demand_df, year == yr)
   weather_year$month_day <- format(weather_year$Date, "%m-%d")
   
-  # 替换 TE, solar_S, wind
+  # Merge and substitute TE, solar_S, wind from the historical year
   merged_df <- merge(winter_df, weather_year[, c("month_day", "TE", "solar_S", "wind")],
                      by = "month_day", all.x = TRUE, suffixes = c("", "_w"))
   
@@ -292,10 +294,10 @@ for (yr in 1991:2012) {
   merged_df$wind <- merged_df$wind_w
   merged_df <- merged_df[, !(names(merged_df) %in% c("TE_w", "solar_S_w", "wind_w"))]
   
-  # 计算拟合值（fixed），用于加残差
+  # Get fixed predictions from the model using substituted weather
   predicted_fixed <- predict(model_TE, newdata = merged_df)
   
-  # 创建 bootstrap 函数：每次用 resampled residual 构造 y_star
+  # Bootstrap function: add resampled residuals to fixed predictions
   boot_max_demand <- function(data, i) {
     sampled_blocks <- sample(winter_blocks, length(winter_blocks), replace = TRUE)
     df_star <- do.call(rbind, sampled_blocks)
@@ -313,16 +315,16 @@ for (yr in 1991:2012) {
     return(max(y_star, na.rm = TRUE))
   }
   
-  # 执行 bootstrap
+  # Perform bootstrap
   set.seed(123)
   boot_out <- boot(data = demand_df, statistic = boot_max_demand, R = boot_iter)
   
-  # 计算 95% CI
+  #  Extract 95% confidence interval
   ci <- boot.ci(boot_out, type = "perc")
   lower <- ci$perc[4]
   upper <- ci$perc[5]
   
-  # 记录结果
+  # Store result
   results <- rbind(results, data.frame(
     year = yr,
     max_predicted_demand = mean(boot_out$t),
@@ -331,23 +333,23 @@ for (yr in 1991:2012) {
   ))
 }
 
-# 查看结果
-print(results)
+# print(results)
 
-#可视化
-# 真实 2013 冬天最大需求
+# Visualization
+# Actual max demand in 2013/14 winter
 real_max_demand <- max(demand_df$demand_gross, na.rm = TRUE, start_year ==2013)
-# 使用 2013 天气数据预测的最大值（即不替换天气的版本）
+
+# Model prediction under 2013/14 actual weather
 original_predicted <- predict(model_TE, newdata = winter_df)
 predicted_2013_demand <- max(original_predicted, na.rm = TRUE)
 
 ggplot(results, aes(x = year)) +
-  # 主线和误差线
+  # Line and error bars for predicted max demand
   geom_line(aes(y = max_predicted_demand, color = "Max Predicted Demand"), size = 1) +
   geom_point(aes(y = max_predicted_demand, color = "Max Predicted Demand")) +
   geom_errorbar(aes(ymin = lower_95, ymax = upper_95, color = "Max Predicted Demand"), width = 0.4) +
   
-  # 添加水平线：真实和原始预测
+  # Horizontal lines for actual and predicted demand
   geom_hline(yintercept = real_max_demand, linetype = "dashed", color = "red", size = 1) +
   geom_hline(yintercept = predicted_2013_demand, linetype = "dashed", color = "darkgreen", size = 1) +
   annotate("text", x = 1991.5, y = real_max_demand - 110, 
@@ -356,7 +358,7 @@ ggplot(results, aes(x = year)) +
            label = "Model Prediction (2013/14 Weather)", color = "darkgreen", hjust = 0, size = 4) +
   annotate("text", x = 1997, y = 56800, 
            label = "Max predicted demand", color = "steelblue", hjust = 0, size = 5) +
-  # 图例配置
+  # Text annotations
   scale_color_manual(
     name = "Legend",
     values = c(
