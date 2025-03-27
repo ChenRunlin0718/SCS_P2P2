@@ -256,7 +256,7 @@ result_table$Significant_95 <- ifelse(
 print(result_table)
 
 #----Q3-----
-boot_iter <- 500
+boot_iter <- 10
 results <- data.frame(year = integer(), max_predicted_demand = numeric(),
                       lower_95 = numeric(), upper_95 = numeric())
 
@@ -336,7 +336,7 @@ print(results)
 
 #可视化
 # 真实 2013 冬天最大需求
-real_max_demand <- max(demand_df$demand_gross, na.rm = TRUE)
+real_max_demand <- max(demand_df$demand_gross, na.rm = TRUE, start_year ==2013)
 # 使用 2013 天气数据预测的最大值（即不替换天气的版本）
 original_predicted <- predict(model_TE, newdata = winter_df)
 predicted_2013_demand <- max(original_predicted, na.rm = TRUE)
