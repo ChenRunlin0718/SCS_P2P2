@@ -83,8 +83,8 @@ ggplot(results, aes(x = year, y = max_predicted_demand)) +
   geom_point(color = "steelblue") +
   geom_hline(yintercept = real_max_demand, linetype = "dashed", color = "red", size = 1) +
   geom_hline(yintercept = predicted_2013_demand, linetype = "dashed", color = "darkgreen", size = 1) +
-  annotate("text", x = 1991.5, y = real_max_demand + 300, label = "Actual 2013/14 Max Demand", color = "red", hjust = 0) +
-  annotate("text", x = 1991.5, y = predicted_2013_demand + 300, label = "Model Prediction (2013/14 Weather)", color = "darkgreen", hjust = 0) +
+  annotate("text", x = 1991.5, y = real_max_demand + 100, label = "Actual 2013/14 Max Demand", color = "red", hjust = 0) +
+  annotate("text", x = 1991.5, y = predicted_2013_demand - 100, label = "Model Prediction (2013/14 Weather)", color = "darkgreen", hjust = 0) +
   labs(title = "Max Predicted Demand for 2013-14 Winter Using Historical Weather (1991–2012)",
        x = "Weather Year Used",
        y = "Max Predicted Demand (MW)")
