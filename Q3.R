@@ -113,7 +113,7 @@ for (yr in 1991:2012) {
   merged_df$wind <- merged_df$wind_w
   merged_df <- merged_df[, !(names(merged_df) %in% c("TE_w", "solar_S_w", "wind_w"))]
   
-  merged_df$predicted_demand <- predict(model_with_lag, newdata = merged_df)
+  merged_df$predicted_demand <- predict(model_TE, newdata = merged_df)
   
   # Bootstrap
   boot_max <- replicate(n_bootstrap, {
